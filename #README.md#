@@ -4,7 +4,7 @@ FEATURES:
  - Create and update hostgroup graphs.
 
 DEPENDENCIES:
-zabbix_api git://github.com/gescheit/scripts.git)
+c zabbix_api git://github.com/gescheit/scripts.git)
 
 INSTALL:
  Clone repo:

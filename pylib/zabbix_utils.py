@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from zabbix.zabbix_api import ZabbixAPI, ZabbixAPIException
+from zabbix_api import ZabbixAPI, ZabbixAPIException
 from utils import getColor
 import sys
 import re
