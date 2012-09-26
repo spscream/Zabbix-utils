@@ -5,7 +5,7 @@ FEATURES:
 
 DEPENDENCIES:
 
-- zabbix_api git://github.com/gescheit/scripts.git)
+- zabbix_api git://github.com/gescheit/scripts.git
 
 INSTALL:
 
