@@ -9,8 +9,10 @@ zabbix_api git://github.com/gescheit/scripts.git)
 INSTALL:
  Clone repo:
   git clone https://github.com/spscream/Zabbix-utils zabbix-utils
- Install zabbix_api python module(It configured as submodule)
-  cd zabbix-utils/pylib/externals && sudo python setup.py install
+ Init submodules:
+  cd zabbix-utils; git submodule update --init
+ Install zabbix_api python module
+  cd pylib/externals/zabbix && sudo python setup.py install
 
 USAGE:
  1) Add graphs to make_zabbix_graphs.py
