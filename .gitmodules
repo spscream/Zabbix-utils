@@ -1,0 +1,3 @@
+[submodule "pylib/zabbix"]
+	path = pylib/zabbix
+	url = https://github.com/gescheit/scripts/tree/master/zabbix/
