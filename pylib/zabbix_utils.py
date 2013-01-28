@@ -1,6 +1,7 @@
 #!/usr/bin/python
+# -*- coding: utf8 -*-
 from zabbix_api import ZabbixAPI, ZabbixAPIException
-from utils import getColor
+from utils import invertColor, getColor
 import sys
 import re
 
@@ -54,12 +55,15 @@ class BaseCreator(object):
 
 
 class ItemCreator(BaseCreator):
-    def createItem(self, host, key, description, type=0, value_type=0, **params):
+    def createItem(self, host, key, name, delay=60, history=14, trends=30, type=0, value_type=0, **params):
         """ Create zabbix item for host or template, if item already exists, skip it.
             Parameters:
             host - host or template name
             key - key for newly created item
-            description - description of item
+            name - name of item
+            delay - update interval of item
+            history - how long to keep item history (days) 
+            trends - How long to keep item trends (days) 
             type - type of item
             value_type - type of value
             params - additional params
@@ -68,18 +72,24 @@ class ItemCreator(BaseCreator):
         """
         try:
             item = {
-                '_key' : key,
-                'templateid' : self.getTemplateByName(host),
-                'description': description,
+                'key_' : key,
+                'name': name,
+                'description': name,
+                'delay': delay,
+                'history': history,
+                'trends': trends,
                 'type' : type,
                 'value_type' : value_type,
             }
             item.update(params)
-
-            itemid = self.getItemByParams(item)
-            if itemid:
-                self._update(itemid[0]['itemid'], item)
+            print item
+            itemids = self.getItemByParams({'key_': item['key_']})
+            if itemids:
+                for itemid in itemids:
+                    #item.update({'templateid':self.getTemplateByName(host)})
+                    self._update(itemid['itemid'], item)
             else:
+                item.update({'hostid':self.getTemplateByName(host)})
                 self._create(item)
 
         except ZabbixAPIException, e:
@@ -96,9 +106,9 @@ class ItemCreator(BaseCreator):
         self.zapi.item.update(item)
 
 class GraphCreator(BaseCreator):
-    def createGraph(self, group, key, name, drawtype='2', width='900', height='200'):
-        """ Create zabbix graph for hostgroup with graphitems determined by key.
-            If graph already exists, update it.
+    def createGraphByHostgroup(self, group, key, name, drawtype='2', width='900', height='200'):
+        """ Creates zabbix graph for hostgroup with graphitems determined by key.
+            If graph already exists, updates it.
             Parameters:
             group - host group
             key - item key which will be graphed
@@ -109,9 +119,9 @@ class GraphCreator(BaseCreator):
         """
         try:
             gitems = []
-            items = self.zapi.item.get({'group':group, 
-                                        'sortfield':'itemid',
-                                        'selectHosts':'extend',
+            items = self.zapi.item.get({'group': group,
+                                        'sortfield': 'itemid',
+                                        'selectHosts': 'extend',
                                         'filter' : {'key_': key}})
             # Add sorting as human expect
             def sort_by_host(items):
@@ -121,19 +131,71 @@ class GraphCreator(BaseCreator):
 
             sorted_items = sort_by_host(items)
             for item in sorted_items:
-                gitem = {
-                    'itemid' : item['itemid'],
+                gitem = self._makeGraphItem(item['itemid'],
+                                            drawtype,
+                                            getColor(len(items), sorted_items.index(item)),
+                                            sorted_items.index(item))
+                gitems.append(gitem)
+            graph = self._makeGraph(gitems, name, width, height)
+            self._createGraph(graph)
+        except ZabbixAPIException, e:
+            sys.stderr.write(str(e) + '\n')
+
+    def createGraphByKeyPattern(self, template, keypattern, name, drawtype='2', width='900', height='200'):
+        """ Creates zabbix template graph for items with key matched pattern.
+            If graph already exists, updates it.
+            Parameters:
+            template - template name
+            keypattern - key pattern which should match items for graphing
+            name - graph name
+            drawtype - Line(0), filled region(1), bold line(2), dot(3), dashed(4), gradient(5)
+            width - width of graph
+            height - height of graph
+        """
+        try:
+            gitems = []
+            items = self.zapi.item.get({'sortfield':'itemid',
+                                        'templated': True,
+                                        'search' : {'key_': keypattern},
+                                        'searchWildcardsEnabled': True}
+            )
+            from pprint import pprint
+            pprint(items)
+            for item in items:
+                gitem = self._makeGraphItem(item['itemid'],
+                                            drawtype,
+                                            getColor(len(items), items.index(item)),
+                                            items.index(item))
+                gitems.append(gitem)
+            graph = self._makeGraph(gitems, name, width, height)
+            self._createGraph(graph)
+        except ZabbixAPIException, e:
+            sys.stderr.write(str(e) + '\n')
+
+
+    def _createGraph(self, graph):
+        graphid = self.getGraphByName(graph['name'])
+        if graphid:
+            graph['graphid'] = graphid[0]['graphid']
+            self.zapi.graph.update(graph)
+        else:
+            self.zapi.graph.create(graph)
+
+    def _makeGraphItem(self, itemid, drawtype, color, sortorder):
+        gitem = {
+                    'itemid' : itemid,
                     'drawtype' : drawtype,
-                    'color' : getColor(len(items), sorted_items.index(item)),
+                    'color' : color,
                     'yaxisside' : '0',
-                    'sortorder' : sorted_items.index(item),
+                    'sortorder' : sortorder,
                     'calc_fnc' : '2',
                     'type' : '0',
                     'periods_cnt': '1',
                 }
-                gitems.append(gitem)
+        return gitem
 
-            graph = {
+    def _makeGraph(self, gitems, name, width, height):
+        graph = {
                 "gitems" : gitems,
                 "name" : name,
                 "width" : width,
@@ -152,13 +214,7 @@ class GraphCreator(BaseCreator):
                 "ymin_itemid":"0",
                 "ymax_itemid":"0"
             }
-            graphid = self.getGraphByName(graph['name'])
-            if graphid:
-                self._update(graphid[0]['graphid'], graph)
-            else:
-                self._create(graph)
-        except ZabbixAPIException, e:
-            sys.stderr.write(str(e) + '\n')
+        return graph
 
     def _create(self, graph):
         self.zapi.graph.create(graph)
@@ -167,5 +223,20 @@ class GraphCreator(BaseCreator):
         graph['graphid'] = graphid
         self.zapi.graph.update(graph)
 
+class CacheFileReader(object):
+    def __init__(self, file):
+        self.items = {}
+        self.file = open(file, 'r')
+        self.read()
 
-
+    def read(self):
+        TIMESTAMP_RE=re.compile("^\d*$")
+        #DATA_RE="^(?P<key>[\w]+)[\s]+(?P<value>[\w]+)[\s]*(?P<params>[\w]*)"
+        DATA_RE="^\s*(?P<key>[\w\.\[\]]+)\s+(?P<value>\w+)\s*(?P<params>.*)$"
+        for line in self.file:
+            m = re.match(DATA_RE, line)
+            if m:
+                self.items[m.group('key')] = {
+                    'value': m.group('value'),
+                    'params': m.group('params')
+                }
