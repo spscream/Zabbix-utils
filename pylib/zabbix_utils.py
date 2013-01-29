@@ -29,7 +29,7 @@ class BaseCreator(object):
                 "host" : name
             }
         }
-        return self.zapi.template.get(params)[0]['templateid']
+        return self.zapi.template.get(params)[0]
 
     def getItemByParams(self, params):
         params = {
@@ -89,7 +89,7 @@ class ItemCreator(BaseCreator):
                     #item.update({'templateid':self.getTemplateByName(host)})
                     self._update(itemid['itemid'], item)
             else:
-                item.update({'hostid':self.getTemplateByName(host)})
+                item.update({'hostid':self.getTemplateByName(host)['templateid']})
                 self._create(item)
 
         except ZabbixAPIException, e:
@@ -104,6 +104,35 @@ class ItemCreator(BaseCreator):
     def _update(self, itemid, item):
         item['itemid'] = itemid
         self.zapi.item.update(item)
+
+class MassItemCreator(ItemCreator):
+    def createItems(self, host, items):
+        """
+        Create zabbix items for host or template, if item are already exist, update it.
+
+        Paratemers:
+        host - name of host or template, where items should be created
+        items - list of parameters where parameter is dict with parameters like for ItemCreator
+        """
+        existing = {}
+        for i in self.getTemplateByName(host, selectItems='extend')['items']:
+            existing[i['key_']] = i
+        new_items = []
+        updating_items = []
+        hostid = self.getTemplateByName(host)['templateid']
+        for item in items:
+            if item['key_'] in existing.keys():
+                updated = existing[item['key_']]
+                updated.update(item)
+                updating_items.append(updated)
+            else:
+                new_items.append(item)
+        for item in new_items:
+            item.update({'hostid': hostid})
+        for item in updating_items:
+            item.pop('templateid', None)
+        self.zapi.item.create(new_items)
+        self.zapi.item.update(updating_items)
 
 class GraphCreator(BaseCreator):
     def createGraphByHostgroup(self, group, key, name, drawtype='2', width='900', height='200'):
