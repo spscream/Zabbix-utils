@@ -2,6 +2,8 @@ This is utils for zabbix.
 
 ### FEATURES:
 - Create and update hostgroup graphs.
+- Create and update graphs for items with matching  key.
+- Mass create of Items
 
 ### DEPENDENCIES:
 - zabbix_api git://github.com/gescheit/scripts.git
