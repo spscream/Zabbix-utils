@@ -31,6 +31,7 @@ gc.createGraph('Example' , 'system.cpu.load[,avg1]', 'Example: Processor load')
 2. run ./make_zabbix_graphs.py -s zbx.example.org -u apiuser -p apipassword
 
 ### TODO:
+ - python package
  - Configuration with python object;
  - Generators for Triggers, Items, Screens;
  - API Documentation.
