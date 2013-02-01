@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 from zabbix_api import ZabbixAPI, ZabbixAPIException
-from utils import invertColor, getColor
+from tools import invertColor, getColor
 import sys
 import re
 
@@ -23,12 +23,13 @@ class BaseCreator(object):
         except ZabbixAPIException, e:
             sys.stderr.write(str(e) + '\n')
 
-    def getTemplateByName(self, name):
+    def getTemplateByName(self, name, **kwargs):
         params = {
             "filter" : {
                 "host" : name
             }
         }
+        params.update(kwargs)
         return self.zapi.template.get(params)[0]
 
     def getItemByParams(self, params):

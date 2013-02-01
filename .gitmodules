@@ -1,6 +1,0 @@
-[submodule "pylib/zabbix"]
-	path = pylib/zabbix
-	url = https://github.com/gescheit/scripts/tree/master/zabbix/
-[submodule "pylib/externals"]
-	path = pylib/externals
-	url = git://github.com/gescheit/scripts.git

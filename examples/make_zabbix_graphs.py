@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
-from pylib.options import get_options
-from pylib.zabbix_utils import GraphCreator
+from zabbix_utils.options import get_options
+from zabbix_utils.lib import GraphCreator
 
 class ZabbixTemplate:
     def __init__(self, config):
